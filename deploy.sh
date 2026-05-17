@@ -19,15 +19,17 @@ log_step()  { echo -e "\n${CYAN}========== $1 ==========${NC}"; }
 # ============================================================
 # 参数检查
 # ============================================================
-if [ "$#" -lt 3 ]; then
-    echo "用法: bash deploy.sh <服务器IP> <用户名> <SSH密钥路径>"
-    echo "示例: bash deploy.sh 43.216.118.188 ubuntu ~/Downloads/key.pem"
+if [ "$#" -lt 5 ]; then
+    echo "用法: bash deploy.sh <服务器IP> <用户名> <SSH密钥路径> <面板用户名> <面板密码>"
+    echo "示例: bash deploy.sh 43.216.118.188 ubuntu ~/Downloads/key.pem admin MyPass123"
     exit 1
 fi
 
 SERVER_IP="$1"
 SERVER_USER="$2"
 SSH_KEY="$3"
+PANEL_USER="$4"
+PANEL_PASS="$5"
 
 # 展开 ~ 路径
 SSH_KEY="${SSH_KEY/#\~/$HOME}"
@@ -404,3 +406,88 @@ echo "iOS: Shadowrocket, Stash"
 echo "Android: v2rayNG, NekoBox"
 echo ""
 echo -e "${GREEN}部署完成！WARP 已配置，YouTube 等网站自动走 Cloudflare 出口。${NC}"
+
+# ============================================================
+# Step 8: 安装 Web 管理面板
+# ============================================================
+log_step "Step 8: 安装 Web 管理面板"
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# Upload web-panel files
+$SSH_CMD "sudo mkdir -p /opt/proxy-panel/templates /opt/proxy-panel/static"
+scp $SSH_OPTS "$SCRIPT_DIR/web-panel/app.py" ${SERVER_USER}@${SERVER_IP}:/tmp/app.py
+scp $SSH_OPTS "$SCRIPT_DIR/web-panel/templates/"*.html ${SERVER_USER}@${SERVER_IP}:/tmp/templates/
+scp $SSH_OPTS "$SCRIPT_DIR/web-panel/static/"*.css ${SERVER_USER}@${SERVER_IP}:/tmp/static/
+
+$SSH_CMD "sudo bash -s" << REMOTE_SCRIPT
+set -e
+export DEBIAN_FRONTEND=noninteractive
+
+# Install Python3 and Flask
+apt-get install -y -qq python3 python3-pip python3-venv
+
+# Move files
+mv /tmp/app.py /opt/proxy-panel/
+mv /tmp/templates/*.html /opt/proxy-panel/templates/
+mv /tmp/static/*.css /opt/proxy-panel/static/
+
+# Create venv and install packages
+cd /opt/proxy-panel
+python3 -m venv venv
+./venv/bin/pip install -q flask werkzeug
+
+# Generate password hash
+HASHED_PASS=\$(./venv/bin/python3 -c "
+from werkzeug.security import generate_password_hash
+print(generate_password_hash('${PANEL_PASS}'))
+")
+
+# Write config
+cat > /opt/proxy-panel/config.json << EOF
+{
+    "username": "${PANEL_USER}",
+    "password_hash": "\${HASHED_PASS}",
+    "port": 8080
+}
+EOF
+
+# Create systemd service
+cat > /etc/systemd/system/proxy-panel.service << 'EOF'
+[Unit]
+Description=Proxy Panel Web UI
+After=network.target xray.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/proxy-panel
+ExecStart=/opt/proxy-panel/venv/bin/python3 /opt/proxy-panel/app.py
+Restart=on-failure
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable proxy-panel
+systemctl restart proxy-panel
+sleep 2
+
+if systemctl is-active --quiet proxy-panel; then
+    echo "Web Panel 安装成功"
+else
+    echo "Web Panel 启动失败"
+    journalctl -u proxy-panel --no-pager -n 5
+fi
+REMOTE_SCRIPT
+
+echo ""
+echo -e "${CYAN}=== Web 管理面板 ===${NC}"
+echo "地址: http://${SERVER_IP}:8080"
+echo "用户名: ${PANEL_USER}"
+echo "密码: ${PANEL_PASS}"
+echo ""
+echo -e "${YELLOW}注意: 请在 Lightsail 防火墙放行 TCP 8080 端口${NC}"

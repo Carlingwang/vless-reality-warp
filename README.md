@@ -31,13 +31,26 @@ Cloudflare WARP (消费者级出口IP)
 ## 一键部署
 
 ```bash
-bash deploy.sh <服务器IP> <用户名> <SSH密钥路径>
+bash deploy.sh <服务器IP> <用户名> <SSH密钥路径> <面板用户名> <面板密码>
 
 # 示例
-bash deploy.sh 43.216.118.188 ubuntu ~/Downloads/key.pem
+bash deploy.sh 43.216.118.188 ubuntu ~/Downloads/key.pem admin MyPass123
 ```
 
-部署完成后会输出 VLESS 分享链接，直接导入客户端即可使用。
+部署完成后会输出 VLESS 分享链接和 Web 管理面板地址。
+
+## Web 管理面板
+
+部署完成后自动安装 Web 管理面板，功能包括：
+
+- **Dashboard**: 服务状态、服务器信息、VLESS 链接一键复制
+- **Routing**: 可视化管理 WARP 路由（添加/删除走 WARP 的域名和 IP 段）
+- **Logs**: 查看 Xray 和 WireGuard 日志
+- **Settings**: 修改登录密码
+
+访问地址: `http://服务器IP:8080`
+
+需在 Lightsail 防火墙放行 TCP 8080 端口。
 
 ## 自动走 WARP 的网站
 
@@ -99,5 +112,5 @@ wgcf generate    # 生成标准 WireGuard 配置
 # 先卸载
 bash uninstall.sh <IP> <用户> <密钥>
 # 再部署
-bash deploy.sh <IP> <用户> <密钥>
+bash deploy.sh <IP> <用户> <密钥> <面板用户名> <面板密码>
 ```

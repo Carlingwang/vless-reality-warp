@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Routing - Proxy Panel{% endblock %}
+{% block content %}
+<h1>Routing Management</h1>
+<p class="subtitle">Manage domains and IP ranges that go through Cloudflare WARP</p>
+
+<div class="grid-2">
+    <div class="card">
+        <h3>WARP Domains ({{ warp_domains|length }})</h3>
+        <form method="POST" action="{{ url_for('add_domain') }}" class="add-form">
+            <input type="text" name="domain" placeholder="example.com" required>
+            <button type="submit" class="btn btn-primary">Add</button>
+        </form>
+        <div class="list-container">
+            {% for domain in warp_domains %}
+            <div class="list-item">
+                <span class="mono">{{ domain }}</span>
+                <form method="POST" action="{{ url_for('delete_domain') }}" style="display:inline">
+                    <input type="hidden" name="domain" value="{{ domain }}">
+                    <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete {{ domain }}?')">Delete</button>
+                </form>
+            </div>
+            {% endfor %}
+            {% if not warp_domains %}
+            <p class="empty">No domains configured</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>WARP IP Ranges ({{ warp_ips|length }})</h3>
+        <form method="POST" action="{{ url_for('add_ip') }}" class="add-form">
+            <input type="text" name="ip" placeholder="172.217.0.0/16" required>
+            <button type="submit" class="btn btn-primary">Add</button>
+        </form>
+        <div class="list-container">
+            {% for ip in warp_ips %}
+            <div class="list-item">
+                <span class="mono">{{ ip }}</span>
+                <form method="POST" action="{{ url_for('delete_ip') }}" style="display:inline">
+                    <input type="hidden" name="ip" value="{{ ip }}">
+                    <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete {{ ip }}?')">Delete</button>
+                </form>
+            </div>
+            {% endfor %}
+            {% if not warp_ips %}
+            <p class="empty">No IP ranges configured</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <h3>How it works</h3>
+    <p>Domains and IP ranges listed above will be routed through Cloudflare WARP when accessed via the proxy. All other traffic goes direct.</p>
+    <p>Changes are applied immediately - Xray will be restarted automatically.</p>
+</div>
+{% endblock %}

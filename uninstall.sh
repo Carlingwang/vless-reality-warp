@@ -22,6 +22,8 @@ $SSH_CMD "sudo bash -s" << 'REMOTE_SCRIPT'
 set -e
 
 # 停止并禁用服务
+systemctl stop proxy-panel 2>/dev/null || true
+systemctl disable proxy-panel 2>/dev/null || true
 systemctl stop wg-quick@wgcf 2>/dev/null || true
 systemctl disable wg-quick@wgcf 2>/dev/null || true
 systemctl stop xray 2>/dev/null || true
@@ -40,6 +42,10 @@ rm -f /etc/wireguard/wgcf.conf
 # 卸载 wgcf
 rm -f /usr/local/bin/wgcf
 rm -f /root/wgcf-account.toml /root/wgcf-profile.conf
+
+# 卸载 Web 面板
+rm -rf /opt/proxy-panel
+rm -f /etc/systemd/system/proxy-panel.service
 
 # 清理 iptables 规则
 iptables -t mangle -D OUTPUT -s 172.16.0.2 -j MARK --set-mark 0x162 2>/dev/null || true

@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - Proxy Panel{% endblock %}
+{% block content %}
+<h1>Dashboard</h1>
+
+<div class="grid-2">
+    <div class="card">
+        <h3>Service Status</h3>
+        <div class="status-row">
+            <span>Xray</span>
+            <span class="badge {% if xray_running %}badge-success{% else %}badge-error{% endif %}">
+                {% if xray_running %}Running{% else %}Stopped{% endif %}
+            </span>
+            <form method="POST" action="{{ url_for('service_action', action='restart_xray') }}" style="display:inline">
+                <button type="submit" class="btn btn-sm">Restart</button>
+            </form>
+        </div>
+        <div class="status-row">
+            <span>WireGuard / WARP</span>
+            <span class="badge {% if wg_running %}badge-success{% else %}badge-error{% endif %}">
+                {% if wg_running %}Connected{% else %}Disconnected{% endif %}
+            </span>
+            <form method="POST" action="{{ url_for('service_action', action='restart_warp') }}" style="display:inline">
+                <button type="submit" class="btn btn-sm">Restart</button>
+            </form>
+        </div>
+        <div class="status-row">
+            <span>WARP Exit IP</span>
+            <span class="mono">{{ warp_ip }}</span>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>Server Info</h3>
+        <div class="info-row"><span>CPU</span><span>{{ cpu_count }} cores</span></div>
+        <div class="info-row"><span>Load</span><span>{{ load }}</span></div>
+        <div class="info-row"><span>Memory</span><span>{{ memory }}</span></div>
+        <div class="info-row"><span>Uptime</span><span>{{ uptime }}</span></div>
+    </div>
+</div>
+
+<div class="card">
+    <h3>Connection Info</h3>
+    <div class="info-grid">
+        <div class="info-row"><span>Server</span><span class="mono">{{ server_ip }}</span></div>
+        <div class="info-row"><span>Port</span><span class="mono">{{ port }}</span></div>
+        <div class="info-row"><span>UUID</span><span class="mono">{{ uuid }}</span></div>
+        <div class="info-row"><span>SNI</span><span class="mono">{{ sni }}</span></div>
+        <div class="info-row"><span>Short ID</span><span class="mono">{{ short_id }}</span></div>
+        <div class="info-row"><span>Public Key</span><span class="mono">{{ public_key }}</span></div>
+    </div>
+</div>
+
+<div class="card">
+    <h3>VLESS Share Link</h3>
+    <div class="link-box">
+        <textarea id="vless-link" readonly>{{ vless_link }}</textarea>
+        <button class="btn btn-primary" onclick="copyLink()">Copy</button>
+    </div>
+</div>
+
+<script>
+function copyLink() {
+    const textarea = document.getElementById('vless-link');
+    textarea.select();
+    document.execCommand('copy');
+    const btn = event.target;
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 2000);
+}
+</script>
+{% endblock %}
