@@ -3,24 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Proxy Panel{% endblock %}</title>
+    <title>{% block title %}代理管理面板{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <div class="layout">
         <nav class="sidebar">
             <div class="sidebar-header">
-                <h2>Proxy Panel</h2>
+                <h2>代理管理面板</h2>
             </div>
             <ul class="nav-links">
-                <li><a href="{{ url_for('dashboard') }}" class="{% if request.endpoint == 'dashboard' %}active{% endif %}">&#9632; Dashboard</a></li>
-                <li><a href="{{ url_for('routing') }}" class="{% if request.endpoint == 'routing' %}active{% endif %}">&#9632; Routing</a></li>
-                <li><a href="{{ url_for('logs') }}" class="{% if request.endpoint == 'logs' %}active{% endif %}">&#9632; Logs</a></li>
-                <li><a href="{{ url_for('settings') }}" class="{% if request.endpoint == 'settings' %}active{% endif %}">&#9632; Settings</a></li>
+                <li><a href="{{ url_for('dashboard') }}" class="{% if request.endpoint == 'dashboard' %}active{% endif %}">&#9632; 状态总览</a></li>
+                <li><a href="{{ url_for('routing') }}" class="{% if request.endpoint == 'routing' %}active{% endif %}">&#9632; 路由管理</a></li>
+                <li><a href="{{ url_for('logs') }}" class="{% if request.endpoint == 'logs' %}active{% endif %}">&#9632; 运行日志</a></li>
+                <li><a href="{{ url_for('settings') }}" class="{% if request.endpoint == 'settings' %}active{% endif %}">&#9632; 系统设置</a></li>
             </ul>
             <div class="sidebar-footer">
                 <span>{{ session.username }}</span>
-                <a href="{{ url_for('logout') }}" class="logout-btn">Logout</a>
+                <a href="{{ url_for('logout') }}" class="logout-btn">退出登录</a>
             </div>
         </nav>
         <main class="content">

@@ -1,20 +1,20 @@
 {% extends "base.html" %}
-{% block title %}Logs - Proxy Panel{% endblock %}
+{% block title %}运行日志 - 代理管理面板{% endblock %}
 {% block content %}
-<h1>Logs</h1>
+<h1>运行日志</h1>
 
 <div class="card">
     <div class="log-tabs">
-        <a href="{{ url_for('logs', type='xray', lines=lines) }}" class="tab {% if log_type == 'xray' %}active{% endif %}">Xray Error</a>
-        <a href="{{ url_for('logs', type='access', lines=lines) }}" class="tab {% if log_type == 'access' %}active{% endif %}">Xray Access</a>
-        <a href="{{ url_for('logs', type='wireguard', lines=lines) }}" class="tab {% if log_type == 'wireguard' %}active{% endif %}">WireGuard</a>
+        <a href="{{ url_for('logs', type='xray', lines=lines) }}" class="tab {% if log_type == 'xray' %}active{% endif %}">Xray 错误日志</a>
+        <a href="{{ url_for('logs', type='access', lines=lines) }}" class="tab {% if log_type == 'access' %}active{% endif %}">Xray 访问日志</a>
+        <a href="{{ url_for('logs', type='wireguard', lines=lines) }}" class="tab {% if log_type == 'wireguard' %}active{% endif %}">WireGuard 状态</a>
     </div>
     <div class="log-controls">
-        <span>Lines:</span>
+        <span>显示行数：</span>
         <a href="{{ url_for('logs', type=log_type, lines=50) }}" class="btn btn-sm {% if lines == 50 %}btn-primary{% endif %}">50</a>
         <a href="{{ url_for('logs', type=log_type, lines=100) }}" class="btn btn-sm {% if lines == 100 %}btn-primary{% endif %}">100</a>
         <a href="{{ url_for('logs', type=log_type, lines=200) }}" class="btn btn-sm {% if lines == 200 %}btn-primary{% endif %}">200</a>
-        <a href="{{ url_for('logs', type=log_type, lines=lines) }}" class="btn btn-sm">Refresh</a>
+        <a href="{{ url_for('logs', type=log_type, lines=lines) }}" class="btn btn-sm">刷新</a>
     </div>
     <pre class="log-content">{{ log_content }}</pre>
 </div>
