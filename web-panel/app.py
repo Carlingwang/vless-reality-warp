@@ -436,13 +436,40 @@ def service_action(action):
     elif action == "restart_warp":
         _, err, rc = run_cmd("wg-quick down wgcf && wg-quick up wgcf")
         if rc == 0:
-            flash("WireGuard 已重启", "success")
+            flash("WARP 已重新连接", "success")
         else:
-            flash(f"WireGuard 重启失败: {err}", "error")
+            flash(f"WARP 重启失败: {err}", "error")
+    elif action == "warp_on":
+        _, err, rc = run_cmd("wg-quick up wgcf")
+        if rc == 0:
+            flash("WARP 已开启", "success")
+        else:
+            flash(f"WARP 开启失败: {err}", "error")
+    elif action == "warp_off":
+        _, err, rc = run_cmd("wg-quick down wgcf")
+        if rc == 0:
+            flash("WARP 已关闭", "success")
+        else:
+            flash(f"WARP 关闭失败: {err}", "error")
     else:
         flash("未知操作", "error")
 
     return redirect(request.referrer or url_for("dashboard"))
+
+
+@app.route("/api/warp_status")
+@login_required
+def warp_status():
+    _, _, wg_rc = run_cmd("wg show wgcf")
+    if "interface" in _:
+        # Check if really connected (has handshake)
+        out, _, _ = run_cmd("wg show wgcf latest-handshakes")
+        if out:
+            parts = out.strip().split()
+            if len(parts) >= 2 and int(parts[1]) > 0:
+                return jsonify({"status": "connected"})
+        return jsonify({"status": "interface_up"})
+    return jsonify({"status": "disconnected"})
 
 
 # ============================================================
