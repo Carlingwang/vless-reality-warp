@@ -93,6 +93,42 @@ def login_required(f):
     return decorated
 
 
+def is_warp_routing_enabled():
+    """Check if Xray routing rules currently point traffic to warp outbound."""
+    try:
+        xray_config = load_xray_config()
+        rules = xray_config.get("routing", {}).get("rules", [])
+        for rule in rules:
+            if rule.get("outboundTag") == "warp":
+                return True
+    except Exception:
+        pass
+    return False
+
+
+def set_warp_routing(enable):
+    """Switch Xray routing rules between warp and direct outbound."""
+    xray_config = load_xray_config()
+    rules = xray_config.get("routing", {}).get("rules", [])
+    target_tag = "warp" if enable else "direct"
+    changed = False
+    for rule in rules:
+        if enable:
+            if rule.get("outboundTag") == "direct":
+                # Only switch back rules that have domain or ip fields (warp rules)
+                if "domain" in rule or "ip" in rule:
+                    rule["outboundTag"] = "warp"
+                    changed = True
+        else:
+            if rule.get("outboundTag") == "warp":
+                rule["outboundTag"] = "direct"
+                changed = True
+    if changed:
+        save_xray_config(xray_config)
+        run_cmd("systemctl restart xray")
+    return changed
+
+
 # ============================================================
 # Routes: Auth
 # ============================================================
@@ -147,9 +183,15 @@ def dashboard():
     wg_out, _, wg_rc = run_cmd("wg show wgcf")
     wg_running = wg_rc == 0 and "interface" in wg_out
 
-    # WARP IP
+    # WARP routing status (from Xray config)
+    warp_routing = is_warp_routing_enabled()
+
+    # Overall WARP status: both WireGuard up AND routing enabled
+    warp_active = wg_running and warp_routing
+
+    # WARP IP (only check when active)
     warp_ip = "N/A"
-    if wg_running:
+    if warp_active:
         out, _, rc = run_cmd(
             "curl -s --interface 172.16.0.2 --connect-timeout 5 "
             "https://www.cloudflare.com/cdn-cgi/trace | grep '^ip='"
@@ -211,6 +253,8 @@ def dashboard():
         "dashboard.html",
         xray_running=xray_running,
         wg_running=wg_running,
+        warp_routing=warp_routing,
+        warp_active=warp_active,
         warp_ip=warp_ip,
         memory=mem_out,
         uptime=uptime_out,
@@ -434,23 +478,32 @@ def service_action(action):
         else:
             flash(f"Xray 重启失败: {err}", "error")
     elif action == "restart_warp":
-        _, err, rc = run_cmd("wg-quick down wgcf && wg-quick up wgcf")
+        # Restart WireGuard and ensure routing is set to warp
+        run_cmd("wg-quick down wgcf 2>/dev/null")
+        _, err, rc = run_cmd("wg-quick up wgcf")
         if rc == 0:
+            set_warp_routing(True)
             flash("WARP 已重新连接", "success")
         else:
             flash(f"WARP 重启失败: {err}", "error")
     elif action == "warp_on":
         _, err, rc = run_cmd("wg-quick up wgcf")
         if rc == 0:
-            flash("WARP 已开启", "success")
+            set_warp_routing(True)
+            flash("WARP 已开启，YouTube/Google 走 Cloudflare 出口", "success")
         else:
             flash(f"WARP 开启失败: {err}", "error")
     elif action == "warp_off":
+        # Step 1: Switch Xray routing to direct (so traffic flows immediately)
+        set_warp_routing(False)
+        # Step 2: Stop WireGuard
         _, err, rc = run_cmd("wg-quick down wgcf")
         if rc == 0:
-            flash("WARP 已关闭", "success")
+            flash("WARP 已关闭，所有流量走直连", "success")
         else:
-            flash(f"WARP 关闭失败: {err}", "error")
+            # WireGuard might already be down, still count as success
+            # since routing is already switched to direct
+            flash("WARP 已关闭，所有流量走直连", "success")
     else:
         flash("未知操作", "error")
 
@@ -460,16 +513,26 @@ def service_action(action):
 @app.route("/api/warp_status")
 @login_required
 def warp_status():
-    _, _, wg_rc = run_cmd("wg show wgcf")
-    if "interface" in _:
+    # Check WireGuard interface
+    wg_out, _, wg_rc = run_cmd("wg show wgcf")
+    wg_running = wg_rc == 0 and "interface" in wg_out
+
+    # Check Xray routing
+    warp_routing = is_warp_routing_enabled()
+
+    if wg_running and warp_routing:
         # Check if really connected (has handshake)
         out, _, _ = run_cmd("wg show wgcf latest-handshakes")
         if out:
             parts = out.strip().split()
             if len(parts) >= 2 and int(parts[1]) > 0:
                 return jsonify({"status": "connected"})
-        return jsonify({"status": "interface_up"})
-    return jsonify({"status": "disconnected"})
+        return jsonify({"status": "connecting"})
+    elif not wg_running and not warp_routing:
+        return jsonify({"status": "disconnected"})
+    else:
+        # Inconsistent state
+        return jsonify({"status": "partial"})
 
 
 # ============================================================

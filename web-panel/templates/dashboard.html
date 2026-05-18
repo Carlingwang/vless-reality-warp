@@ -17,12 +17,12 @@
         </div>
         <div class="status-row">
             <span>WARP 状态</span>
-            <span class="badge {% if wg_running %}badge-success{% else %}badge-error{% endif %}">
-                {% if wg_running %}已开启{% else %}已关闭{% endif %}
+            <span class="badge {% if warp_active %}badge-success{% elif wg_running and not warp_routing %}badge-warn{% elif warp_routing and not wg_running %}badge-warn{% else %}badge-error{% endif %}">
+                {% if warp_active %}已开启{% elif wg_running and not warp_routing %}线路已连接，路由已关闭{% elif warp_routing and not wg_running %}路由已启用，线路未连接{% else %}已关闭{% endif %}
             </span>
-            {% if wg_running %}
+            {% if warp_active %}
             <form method="POST" action="{{ url_for('service_action', action='warp_off') }}" style="display:inline">
-                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('确定关闭 WARP 吗？YouTube 等网站将无法通过 Cloudflare 出口访问。')">关闭</button>
+                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('确定关闭 WARP 吗？&#10;&#10;关闭后 YouTube、Google 等网站将走直连（机房IP出口），部分网站可能无法正常访问。')">关闭</button>
             </form>
             <form method="POST" action="{{ url_for('service_action', action='restart_warp') }}" style="display:inline">
                 <button type="submit" class="btn btn-sm">重连</button>
@@ -37,6 +37,11 @@
             <span>WARP 出口 IP</span>
             <span class="mono">{{ warp_ip }}</span>
         </div>
+        {% if not warp_active %}
+        <div class="status-hint">
+            WARP 关闭时，YouTube/Google 等网站走直连（服务器机房IP出口），部分网站可能限制访问。
+        </div>
+        {% endif %}
     </div>
 
     <div class="card">
